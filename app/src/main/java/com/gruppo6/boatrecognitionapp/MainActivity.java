@@ -12,6 +12,8 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
+import org.opencv.android.CameraActivity;
+
 public class MainActivity extends AppCompatActivity {
 
     private static final String[] CAMERA_PERMISSION = new String[]{Manifest.permission.CAMERA};

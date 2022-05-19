@@ -1,66 +1,140 @@
 package com.gruppo6.boatrecognitionapp;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.camera.core.CameraSelector;
-import androidx.camera.core.ImageAnalysis;
-import androidx.camera.core.ImageProxy;
-import androidx.camera.core.Preview;
-import androidx.camera.lifecycle.ProcessCameraProvider;
-import androidx.camera.view.PreviewView;
-import androidx.core.content.ContextCompat;
-import androidx.lifecycle.LifecycleOwner;
 
+import android.content.Context;
+import android.content.res.AssetManager;
 import android.os.Bundle;
-import android.util.Size;
-import android.view.OrientationEventListener;
-import android.widget.TextView;
+import android.util.Log;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import org.opencv.android.BaseLoaderCallback;
+import org.opencv.android.CameraBridgeViewBase;
+import org.opencv.android.LoaderCallbackInterface;
+import org.opencv.android.OpenCVLoader;
+import org.opencv.core.Core;
+import org.opencv.core.Mat;
+import org.opencv.core.Point;
+import org.opencv.core.Scalar;
+import org.opencv.core.Size;
+import org.opencv.dnn.Dnn;
+import org.opencv.dnn.Net;
+import org.opencv.imgproc.Imgproc;
 
-import java.util.concurrent.ExecutionException;
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 
-public class CameraActivity extends AppCompatActivity {
+public class CameraActivity extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2 {
 
-    private PreviewView previewView;
-    private ListenableFuture<ProcessCameraProvider> cameraProviderFuture;
+    private static final String TAG = "OpenCV/Sample/MobileNet";
+    private static final String[] classNames = {"boat"};
+    private Net net;
+    private CameraBridgeViewBase mOpenCvCameraView;
 
+    // Initialize OpenCV manager.
+    private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
+        @Override
+        public void onManagerConnected(int status) {
+            switch (status) {
+                case LoaderCallbackInterface.SUCCESS: {
+                    Log.i(TAG, "OpenCV loaded successfully");
+                    mOpenCvCameraView.enableView();
+                    break;
+                }
+                default: {
+                    super.onManagerConnected(status);
+                    break;
+                }
+            }
+        }
+    };
+    @Override
+    public void onResume() {
+        super.onResume();
+        OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION, this, mLoaderCallback);
+    }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_camera);
-
-        previewView = findViewById(R.id.preview_view);
-        cameraProviderFuture = ProcessCameraProvider.getInstance(this);
-        cameraProviderFuture.addListener(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    ProcessCameraProvider cameraProvider = cameraProviderFuture.get();
-                    bindImageAnalysis(cameraProvider);
-                } catch (ExecutionException | InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-        }, ContextCompat.getMainExecutor(this));
+        setContentView(R.layout.activity_main);
+        // Set up camera listener.
+        mOpenCvCameraView = (CameraBridgeViewBase)findViewById(R.id.CameraView);
+        mOpenCvCameraView.setVisibility(CameraBridgeViewBase.VISIBLE);
+        mOpenCvCameraView.setCvCameraViewListener(this);
     }
-
-    private void bindImageAnalysis(@NonNull ProcessCameraProvider cameraProvider) {
-        ImageAnalysis imageAnalysis =
-                new ImageAnalysis.Builder().setTargetResolution(new Size(1920, 1080))
-                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST).build();
-        imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(this), new ImageAnalysis.Analyzer() {
-            @Override
-            public void analyze(@NonNull ImageProxy image) {
-                image.close();
+    // Load a network.
+    public void onCameraViewStarted(int width, int height) {
+        String proto = getPath("MobileNetSSD_deploy.prototxt", this);
+        String weights = getPath("mobilenet_iter_73000.caffemodel", this);
+        net = Dnn.readNetFromCaffe(proto, weights);
+        Log.i(TAG, "Network loaded successfully");
+    }
+    public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
+        final int IN_WIDTH = 300;
+        final int IN_HEIGHT = 300;
+        final float WH_RATIO = (float)IN_WIDTH / IN_HEIGHT;
+        final double IN_SCALE_FACTOR = 0.007843;
+        final double MEAN_VAL = 127.5;
+        final double THRESHOLD = 0.2;
+        // Get a new frame
+        Mat frame = inputFrame.rgba();
+        Imgproc.cvtColor(frame, frame, Imgproc.COLOR_RGBA2RGB);
+        // Forward image through network.
+        Mat blob = Dnn.blobFromImage(frame, IN_SCALE_FACTOR,
+                new Size(IN_WIDTH, IN_HEIGHT),
+                new Scalar(MEAN_VAL, MEAN_VAL, MEAN_VAL), /*swapRB*/false, /*crop*/false);
+        net.setInput(blob);
+        Mat detections = net.forward();
+        int cols = frame.cols();
+        int rows = frame.rows();
+        detections = detections.reshape(1, (int)detections.total() / 7);
+        for (int i = 0; i < detections.rows(); ++i) {
+            double confidence = detections.get(i, 2)[0];
+            if (confidence > THRESHOLD) {
+                int classId = (int)detections.get(i, 1)[0];
+                int left   = (int)(detections.get(i, 3)[0] * cols);
+                int top    = (int)(detections.get(i, 4)[0] * rows);
+                int right  = (int)(detections.get(i, 5)[0] * cols);
+                int bottom = (int)(detections.get(i, 6)[0] * rows);
+                // Draw rectangle around detected object.
+                Imgproc.rectangle(frame, new Point(left, top), new Point(right, bottom),
+                        new Scalar(0, 255, 0));
+                String label = classNames[classId] + ": " + confidence;
+                int[] baseLine = new int[1];
+                Size labelSize = Imgproc.getTextSize(label, 1, 0.5, 1, baseLine);
+                // Draw background for label.
+                Imgproc.rectangle(frame, new Point(left, top - labelSize.height),
+                        new Point(left + labelSize.width, top + baseLine[0]),
+                        new Scalar(255, 255, 255), Imgproc.FILLED);
+                // Write class name and confidence.
+                Imgproc.putText(frame, label, new Point(left, top),
+                        1, 0.5, new Scalar(0, 0, 0));
             }
-        });
-
-        Preview preview = new Preview.Builder().build();
-        CameraSelector cameraSelector = new CameraSelector.Builder()
-                .requireLensFacing(CameraSelector.LENS_FACING_BACK).build();
-        preview.setSurfaceProvider(previewView.getSurfaceProvider());
-        cameraProvider.bindToLifecycle((LifecycleOwner)this, cameraSelector,
-                imageAnalysis, preview);
+        }
+        return frame;
+    }
+    public void onCameraViewStopped() {}
+    // Upload file to storage and return a path.
+    private static String getPath(String file, Context context) {
+        AssetManager assetManager = context.getAssets();
+        BufferedInputStream inputStream = null;
+        try {
+            // Read data from assets.
+            inputStream = new BufferedInputStream(assetManager.open(file));
+            byte[] data = new byte[inputStream.available()];
+            inputStream.read(data);
+            inputStream.close();
+            // Create copy file in storage.
+            File outFile = new File(context.getFilesDir(), file);
+            FileOutputStream os = new FileOutputStream(outFile);
+            os.write(data);
+            os.close();
+            // Return a path to file which may be read in common way.
+            return outFile.getAbsolutePath();
+        } catch (IOException ex) {
+            Log.i(TAG, "Failed to upload a file");
+        }
+        return "";
     }
 }

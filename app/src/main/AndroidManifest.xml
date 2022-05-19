@@ -3,7 +3,6 @@
     package="com.gruppo6.boatrecognitionapp">
 
     <uses-feature android:name="android.hardware.camera.any" />
-
     <uses-permission android:name="android.permission.CAMERA" />
 
     <application
@@ -14,7 +13,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.BoatRecognitionApp">
         <activity
-            android:name=".CameraActivity"
+            android:name="org.opencv.android.CameraActivity"
             android:exported="false" />
         <activity
             android:name=".MainActivity"

@@ -5,6 +5,8 @@
       <map>
         <entry key="app/src/main/res/layout/activity_camera.xml" value="0.3591485507246377" />
         <entry key="app/src/main/res/layout/activity_main.xml" value="0.3591485507246377" />
+        <entry key="app/src/main/res/layout/activity_open_cvactivity.xml" value="0.1109375" />
+        <entry key="app/src/main/res/layout/color_blo_detection_surface_view.xml" value="0.1109375" />
       </map>
     </option>
   </component>

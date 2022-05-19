@@ -8,9 +8,10 @@
     android:gravity="center"
     tools:context=".CameraActivity">
 
-    <androidx.camera.view.PreviewView
-        android:id="@+id/preview_view"
+    <org.opencv.android.JavaCameraView
+        android:id="@+id/CameraView"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"/>
+        android:layout_height="match_parent"
+        android:visibility="visible" />
 
 </LinearLayout>

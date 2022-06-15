@@ -15,6 +15,7 @@ import androidx.core.content.ContextCompat;
 import androidx.lifecycle.LifecycleOwner;
 
 import android.annotation.SuppressLint;
+import android.content.Intent;
 import android.graphics.Rect;
 import android.media.Image;
 import android.os.Bundle;
@@ -139,11 +140,26 @@ public class CameraActivity extends AppCompatActivity {
                                                 for (DetectedObject detectedObject : results) {
                                                     Rect boundingBox = detectedObject.getBoundingBox();
                                                     Integer trackingId = detectedObject.getTrackingId();
+                                                    // liner -> 629
+                                                    // schooner -> 781
+                                                    // speedboat -> 815
+                                                    // trimaran -> 872
+                                                    // lifeboat -> 626
+                                                    // yawl -> 915
+                                                    // catamaran -> 485
                                                     for (DetectedObject.Label label : detectedObject.getLabels()) {
                                                         String text = label.getText();
                                                         Log.d("Object recognized", text);
                                                         int index = label.getIndex();
+                                                        Log.d("Index", String.valueOf(index));
                                                         float confidence = label.getConfidence();
+                                                        if(index == 629 || index == 781
+                                                        || index == 815 || index == 872
+                                                        || index == 626 || index == 915
+                                                        || index == 485){
+                                                            Intent intent = new Intent(CameraActivity.this, MainActivity.class);
+                                                            startActivity(intent);
+                                                        }
                                                     }
                                                 }
                                             }

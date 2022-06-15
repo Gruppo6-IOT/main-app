@@ -10,7 +10,14 @@
 
     <androidx.camera.view.PreviewView
         android:id="@+id/preview_view"
+        android:layout_width="411dp"
+        android:layout_height="631dp" />
+
+    <Button
+        android:id="@+id/captureImg"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"/>
+        android:layout_height="101dp"
+        android:text="Check for boats" />
+
 
 </LinearLayout>

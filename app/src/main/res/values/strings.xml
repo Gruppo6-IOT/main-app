@@ -1,5 +1,5 @@
 <resources>
     <string name="app_name">BoatRecognitionApp</string>
-    <string name="app_title">Boat Recognition App</string>
-    <string name="btn_start_camera">Start Camera</string>
+    <string name="app_title">Recognize a Boat using Tensorflow</string>
+    <string name="btn_start_camera">Start Recognizer</string>
 </resources>
